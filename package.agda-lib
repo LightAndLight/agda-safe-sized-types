@@ -1,0 +1,4 @@
+name: safe-sized-types
+include: src
+depend: standard-library
+flags: --without-K

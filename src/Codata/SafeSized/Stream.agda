@@ -15,30 +15,39 @@ data Stream (A : Set) (@0 i : ℕ) : Set where
     ■ (λ j → A × Stream A j) i →
     Stream A i
 
+cons : {A : Set} {@0 i : ℕ} → A → ({@0 j : ℕ} → i Erased.≡ suc j → Stream A j) → Stream A i
+cons h t = stream (delay λ prf → h , t prf)
+
+guard : {A : Set} {@0 i : ℕ} → ({@0 j : ℕ} → i Erased.≡ suc j → A × Stream A j) → Stream A i
+guard f = stream (delay f)
+
 unstream : {A : Set} {@0 i : ℕ} → Stream A i → ■ (λ j → A × Stream A j) i
 unstream (stream f) = f
 
-get : {A : Set} {@0 i : ℕ} → Stream A i → {@0 j : ℕ} → i Erased.≡ suc j → A × Stream A j
-get s = undelay (unstream s)
+get' : {A : Set} {@0 i : ℕ} → Stream A i → {@0 j : ℕ} → i Erased.≡ suc j → A × Stream A j
+get' s = undelay (unstream s)
 
-get-head : {A : Set} {@0 i : ℕ} → Stream A i → {@0 j : ℕ} → i Erased.≡ suc j → A
-get-head s prf = proj₁ (get s prf)
+get : {A : Set} {@0 i : ℕ} → Stream A (suc i) → A × Stream A i
+get s = get' s Erased.refl
+
+head' : {A : Set} {@0 i : ℕ} → Stream A i → {@0 j : ℕ} → i Erased.≡ suc j → A
+head' s prf = proj₁ (get' s prf)
 
 head : {A : Set} {@0 i : ℕ} → Stream A (suc i) → A
-head s = get-head s Erased.refl
+head s = head' s Erased.refl
 
-get-tail : {A : Set} {@0 i : ℕ} → Stream A i → {@0 j : ℕ} → i Erased.≡ suc j → Stream A j
-get-tail s prf = proj₂ (get s prf)
+tail' : {A : Set} {@0 i : ℕ} → Stream A i → {@0 j : ℕ} → i Erased.≡ suc j → Stream A j
+tail' s prf = proj₂ (get' s prf)
 
 tail : {A : Set} {@0 i : ℕ} → Stream A (suc i) → Stream A i
-tail s = get-tail s Erased.refl
+tail s = tail' s Erased.refl
 
 unfold : {A S : Set} {@0 i : ℕ} → (S → A × S) → S → Stream A i
 unfold f s =
-  stream (delay λ{ {j} Erased.refl →
-    let a , s' = f s in
-    a , unfold {i = j} f s'
-   })
+  let a , s' = f s in
+  cons a λ{ {j} Erased.refl →
+    unfold {i = j} f s'
+  }
 
 repeat : {A : Set} {@0 i : ℕ} → A → Stream A i
 repeat = unfold λ x → x , x
@@ -50,28 +59,25 @@ take (suc n) s with take n (tail s)
 
 map : {A B : Set} {@0 i : ℕ} → (A → B) → Stream A i → Stream B i
 map f s =
-  stream (delay λ{ {j} Erased.refl →
-    f (head s)
-    ,
-    map f (tail s)
-  })
+  guard λ{ Erased.refl →
+    let h , t = get s in
+    f h , map f t
+  }
 
 zipWith : {A B C : Set} {@0 i : ℕ} → (A → B → C) → Stream A i → Stream B i → Stream C i
 zipWith f s1 s2 =
-  stream (delay λ{ Erased.refl →
-    let a , s1' = get s1 Erased.refl in
-    let b , s2' = get s2 Erased.refl in
+  guard λ{ Erased.refl →
+    let a , s1' = get s1 in
+    let b , s2' = get s2 in
     f a b , zipWith f s1' s2'
-  })
+  }
 
 weaken : {A : Set} {@0 i : ℕ} → Stream A (suc i) → Stream A i
 weaken s =
-  stream (delay λ{ {j} Erased.refl →
-    let h , t = get s Erased.refl in
-    h
-    ,
-    weaken {i = j} t
-  })
+  guard λ{ {j} Erased.refl →
+    let h , t = get s in
+    h , weaken {i = j} t
+  }
 
 data Stream-∞ (A : Set) : Set where
   stream-∞ : ({@0 i : ℕ} → Stream A i) → Stream-∞ A
@@ -95,11 +101,23 @@ module _ {A : Set} where
   data Stream-All {@0 i : ℕ} (R : A → A → Set) (s s' : Stream A i) : Set where
     Stream-all :
       ({@0 j : ℕ} → (prf : i Erased.≡ suc j) →
-        R (get-head s prf) (get-head s' prf)
+        R (head' s prf) (head' s' prf)
         ×
-        Stream-All R (get-tail s {j} prf) (get-tail s' {j} prf)
+        Stream-All R (tail' s {j} prf) (tail' s' {j} prf)
       ) →
       Stream-All R s s'
+
+  -- Intuition from <https://www.joachim-breitner.de/blog/727-How_is_coinduction_the_dual_of_induction_>
+  Stream-All-unfold :
+    {Q : {@0 i : ℕ} → Stream A i → Stream A i → Set} {R : A → A → Set} →
+    ({@0 i : ℕ} {a b : Stream A (suc i)} → Q a b → R (head a) (head b) × Q (tail a) (tail b)) →
+    {@0 i : ℕ} {a b : Stream A i} →
+    Q a b → Stream-All R a b
+  Stream-All-unfold {Q} {R} f s =
+    Stream-all λ{ Erased.refl →
+      let h , t = f s in
+      h , Stream-All-unfold {Q} {R} f t
+    }
 
   _Stream-≡_ : {@0 i : ℕ} → (s s' : Stream A i) → Set
   _Stream-≡_ = Stream-All _≡_
@@ -110,7 +128,7 @@ module _ {A : Set} where
       (λ{ {j} Erased.refl →
         refl
         ,
-        Stream-≡-refl {j} {a = get-tail a Erased.refl}
+        Stream-≡-refl {j} {a = tail' a Erased.refl}
       })
 
   Stream-≡-trans :
@@ -151,7 +169,7 @@ module _ {A : Set} where
   Stream-≡-cong-tail :
     {@0 i : ℕ} {a b : Stream A i} →
     a Stream-≡ b →
-    {j : ℕ} → (prf : i Erased.≡ suc j) → get-tail a prf Stream-≡ get-tail b prf
+    {j : ℕ} → (prf : i Erased.≡ suc j) → tail' a prf Stream-≡ tail' b prf
   Stream-≡-cong-tail (Stream-all prf) {j} prf' = proj₂ (prf {j} prf')
 
   module Stream-≡-Reasoning {@0 i : ℕ} where
@@ -192,23 +210,19 @@ module Example where
 
   fib : {@0 i : ℕ} → Stream ℕ i
   fib =
-    stream (delay λ{ Erased.refl →
-      0
-      ,
-      stream (delay λ{ Erased.refl →
-        1
-        ,
+    cons 0 λ{ Erased.refl →
+      cons 1 λ{ Erased.refl →
         zipWith _+_ fib (tail fib)
-      })
-    })
+      }
+    }
 
   avg : ℕ → ℕ → ℕ
   avg m n = (m + n) / 2
 
   fil : {@0 i : ℕ} → Stream ℕ (i * 2) → Stream ℕ i
   fil s =
-    stream (delay λ{ {j} Erased.refl →
-      let x1 , s' = get s {j = suc (j * 2)} Erased.refl in
-      let x2 , s'' = get s' {j = j * 2} Erased.refl in
+    guard λ{ {j} Erased.refl →
+      let x1 , s' = get' s {j = suc (j * 2)} Erased.refl in
+      let x2 , s'' = get' s' {j = j * 2} Erased.refl in
       avg x1 x2 , fil s''
-    })
+    }

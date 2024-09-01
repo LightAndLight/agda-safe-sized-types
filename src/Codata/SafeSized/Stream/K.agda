@@ -24,11 +24,11 @@ merge {A} {i} s1 s2 =
     -- Requires UIP to pattern match on erased proof `i ≡ suc k`
     inner : {@0 j1 : ℕ} → @0 Σ[ k ∈ ℕ ] ((i ≡ suc k) × (j1 ≡ suc (k * 2))) → A × Stream A j1
     inner (k , refl , refl) =
-      let h1 , t1 = get s1 refl in
+      let h1 , t1 = get s1 in
       h1
       ,
       stream (delay λ{ {j2} refl →
-        let h2 , t2 = get s2 refl in
+        let h2 , t2 = get s2 in
         h2
         ,
         merge {i = k} t1 t2

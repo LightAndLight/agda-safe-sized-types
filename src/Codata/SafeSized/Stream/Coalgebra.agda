@@ -17,14 +17,23 @@ data StreamF (A : Set) (X : @0 ℕ → Set) (@0 i : ℕ) : Set where
 unstreamF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → ■ (λ j → A × X j) i
 unstreamF (streamF f) = f
 
-getF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → {@0 j : ℕ} → i Erased.≡ suc j → A × X j
-getF s = undelay (unstreamF s)
+getF' : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → {@0 j : ℕ} → i Erased.≡ suc j → A × X j
+getF' s = undelay (unstreamF s)
 
-get-headF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → {@0 j : ℕ} → i Erased.≡ suc j → A
-get-headF s prf = proj₁ (getF s prf)
+getF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X (suc i) → A × X i
+getF s = getF' s Erased.refl
 
-get-tailF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → {@0 j : ℕ} → i Erased.≡ suc j → X j
-get-tailF s prf = proj₂ (getF s prf)
+headF' : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → {@0 j : ℕ} → i Erased.≡ suc j → A
+headF' s prf = proj₁ (getF' s prf)
+
+headF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X (suc i) → A
+headF s = headF' s Erased.refl
+
+tailF' : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X i → {@0 j : ℕ} → i Erased.≡ suc j → X j
+tailF' s prf = proj₂ (getF' s prf)
+
+tailF : {A : Set} {X : @0 ℕ → Set} {@0 i : ℕ} → StreamF A X (suc i) → X i
+tailF s = tailF' s Erased.refl
 
 StreamF-map :
   {A : Set} {X Y : @0 ℕ → Set} {@0 i : ℕ} →
@@ -33,7 +42,7 @@ StreamF-map :
   StreamF A Y i
 StreamF-map {i = i} f s =
   streamF (delay λ{ {j} Erased.refl →
-    let h , t = getF s Erased.refl in
+    let h , t = getF s in
     h , f Erased.refl t
   })
 
@@ -52,8 +61,8 @@ module _ {A : Set} {X : @0 ℕ → Set} {X-Equiv : {@0 i : ℕ} → X i → X i 
       (
         {@0 j : ℕ} →
         (prf : i Erased.≡ suc j) →
-        get-headF s prf ≡ get-headF s' prf ×
-        X-Equiv (get-tailF s {j} prf) (get-tailF s' {j} prf)
+        headF' s prf ≡ headF' s' prf ×
+        X-Equiv (tailF' s {j} prf) (tailF' s' {j} prf)
       ) →
       s StreamF-≡ s'
 
@@ -62,7 +71,7 @@ module _ {A : Set} {X : @0 ℕ → Set} {X-Equiv : {@0 i : ℕ} → X i → X i 
     a StreamF-≡ b →
     {@0 j : ℕ} →
     (prf : i Erased.≡ suc j) →
-    get-headF a prf ≡ get-headF b prf
+    headF' a prf ≡ headF' b prf
   StreamF-≡-cong-head (StreamF-refl f) prf = proj₁ (f prf)
 
   StreamF-≡-cong-tail :
@@ -70,7 +79,7 @@ module _ {A : Set} {X : @0 ℕ → Set} {X-Equiv : {@0 i : ℕ} → X i → X i 
     a StreamF-≡ b →
     {@0 j : ℕ} →
     (prf : i Erased.≡ suc j) →
-    X-Equiv (get-tailF a prf) (get-tailF b prf)
+    X-Equiv (tailF' a prf) (tailF' b prf)
   StreamF-≡-cong-tail (StreamF-refl f) prf = proj₂ (f prf)
 
   StreamF-≡-trans :
@@ -97,7 +106,7 @@ StreamF-IFunctorEquiv =
     Equiv = λ {A} A-Equiv → _StreamF-≡_ {X = A} {X-Equiv = A-Equiv}
   }
 
-open import Codata.SafeSized.Stream using (Stream; unstream; get-head; get-tail)
+open import Codata.SafeSized.Stream using (Stream; unstream; head; tail)
 open Stream
 
 stream-wrap : {A : Set} {@0 i : ℕ} → StreamF A (Stream A) i → Stream A i
@@ -162,17 +171,17 @@ module _ {A : Set} where
               ,
               let open Codata.SafeSized.Stream.Stream-≡-Reasoning in
               begin
-                get-tailF (ifmap to-stream (step-X arg)) Erased.refl
+                tailF (ifmap to-stream (step-X arg))
               ≡⟨⟩ -- inline definition of `to-stream`
-                get-tailF (ifmap (stream-unfold step-X) (step-X arg)) Erased.refl
+                tailF (ifmap (stream-unfold step-X) (step-X arg))
               ≡⟨⟩ -- anti-inline definition of `stream-unfold`
-                get-tail (stream-unfold step-X arg) Erased.refl
+                tail (stream-unfold step-X arg)
               ≡⟨⟩ -- anti-inline definition of `to-stream`
-                get-tail (to-stream arg) Erased.refl
-              ≡⟨⟩ -- `get-tail ≡ get-tailF ∘ stream-unwrap`
-                get-tailF (stream-unwrap (to-stream arg)) Erased.refl
+                tail (to-stream arg)
+              ≡⟨⟩ -- `tail ≡ tailF ∘ stream-unwrap`
+                tailF (stream-unwrap (to-stream arg))
               ≡⟨⟩ -- anti-inline definition of `ICoalgebra.apply Stream-coalgebra`
-                get-tailF (ICoalgebra.apply Stream-coalgebra (to-stream arg)) Erased.refl
+                tailF (ICoalgebra.apply Stream-coalgebra (to-stream arg))
               ∎
             }
 
@@ -200,36 +209,36 @@ module _ {A : Set} where
         Stream-all λ{ {j} Erased.refl →
           (let open Eq.≡-Reasoning in
           begin
-            get-head (to-stream arg) Erased.refl
+            head (to-stream arg)
           ≡⟨⟩ -- inline definition of `to-stream`
-            get-head (stream-unfold step-X arg) Erased.refl
-          ≡⟨⟩ -- `get-head ∘ stream-unfold f ≡ get-headF ∘ f`
-            get-headF (step-X arg) Erased.refl
-          ≡⟨⟩ -- `get-headF ≡ get-headF ∘ Stream-ifmap f`
-            get-headF (StreamF-ifmap to-stream' (step-X arg)) Erased.refl
+            head (stream-unfold step-X arg)
+          ≡⟨⟩ -- `head ∘ stream-unfold f ≡ headF ∘ f`
+            headF (step-X arg)
+          ≡⟨⟩ -- `headF ≡ headF ∘ Stream-ifmap f`
+            headF (StreamF-ifmap to-stream' (step-X arg))
           ≡⟨ StreamF-≡-cong-head (to-stream'-correct arg) Erased.refl ⟩
-            get-headF (stream-unwrap (to-stream' arg)) Erased.refl
-          ≡⟨⟩ -- `get-head ≡ get-headF ∘ stream-unwrap`
-            get-head (to-stream' arg) Erased.refl
+            headF (stream-unwrap (to-stream' arg)) 
+          ≡⟨⟩ -- `head ≡ headF ∘ stream-unwrap`
+            head (to-stream' arg)
           ∎)
           ,
           let open Codata.SafeSized.Stream.Stream-≡-Reasoning in
           begin
-            get-tail (to-stream arg) Erased.refl
+            tail (to-stream arg)
           ≡⟨⟩ -- inline definition of `to-stream`
-            get-tail (stream-unfold step-X arg) Erased.refl
-          ≡⟨⟩ -- `get-tail ∘ stream-unfold f ≡ stream-unfold f ∘ get-tailF ∘ f`
-            stream-unfold step-X (get-tailF (step-X arg) Erased.refl)
+            tail (stream-unfold step-X arg)
+          ≡⟨⟩ -- `tail ∘ stream-unfold f ≡ stream-unfold f ∘ tailF ∘ f`
+            stream-unfold step-X (tailF (step-X arg))
           ≡⟨⟩ -- anti-inline definition of `to-stream`
-            to-stream (get-tailF (step-X arg) Erased.refl)
-          ≡⟨ f≡g g (get-tailF (step-X arg) Erased.refl) ⟩
-            to-stream' (get-tailF (step-X arg) Erased.refl)
-          ≡⟨⟩ -- f ∘ get-tailF ≡ get-tailF ∘ StreamF-ifmap f
-            get-tailF (StreamF-ifmap to-stream' (step-X arg)) Erased.refl
+            to-stream (tailF (step-X arg))
+          ≡⟨ f≡g g (tailF (step-X arg)) ⟩
+            to-stream' (tailF (step-X arg))
+          ≡⟨⟩ -- f ∘ tailF ≡ tailF ∘ StreamF-ifmap f
+            tailF (StreamF-ifmap to-stream' (step-X arg))
           ≡⟨ StreamF-≡-cong-tail (to-stream'-correct arg) Erased.refl ⟩
-            get-tailF (stream-unwrap (to-stream' arg)) Erased.refl
-          ≡⟨⟩ -- `get-tail ≡ get-tailF ∘ stream-unwrap`
-            get-tail (to-stream' arg) Erased.refl
+            tailF (stream-unwrap (to-stream' arg))
+          ≡⟨⟩ -- `tail ≡ tailF ∘ stream-unwrap`
+            tail (to-stream' arg)
           ∎
         }
 

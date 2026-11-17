@@ -1,9 +1,8 @@
 {
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    agda2hs.url = "github:agda/agda2hs";
   };
-  outputs = { self, nixpkgs, flake-utils, agda2hs }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let 
         pkgs = import nixpkgs { inherit system; };

@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 module Codata.SafeSized.Stream where
 
 open import Data.Empty using (⊥)

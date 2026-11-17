@@ -13,6 +13,7 @@
             (agda.withPackages (p: [ p.standard-library ]))
           ];
         };
+        packages.default = pkgs.agdaPackages.callPackage ./default.nix {};
       }
     );
 }

@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 module Codata.SafeSized.Thunk where
 
 open import Data.Nat using (ℕ; suc)

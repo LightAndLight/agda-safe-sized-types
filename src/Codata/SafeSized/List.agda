@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 module Codata.SafeSized.List where
 
 open import Data.Maybe using (Maybe; just; nothing)

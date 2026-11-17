@@ -1,6 +1,6 @@
 -- Category theory for indexed families of types
 
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 module Category.Indexed {I : Set} where
 
 open import Data.Nat using (ℕ)

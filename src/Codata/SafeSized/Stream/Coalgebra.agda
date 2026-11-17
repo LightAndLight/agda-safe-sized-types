@@ -1,6 +1,6 @@
 -- Coalgebraic semantics for sized coinductive streams
 
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 module Codata.SafeSized.Stream.Coalgebra where
 
 open import Data.Nat using (ℕ; suc)

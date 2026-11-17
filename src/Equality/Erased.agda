@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 module Equality.Erased where
 
 data _≡_ {A : Set} (@0 x : A) : @0 A → Set where

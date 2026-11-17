@@ -1,6 +1,6 @@
 -- F-coalgebras for indexed families of types
 
-{-# OPTIONS --safe --erasure #-}
+{-# OPTIONS --safe --erasure --without-K #-}
 open import Data.Nat using (ℕ)
 
 open import Category.Indexed using (IFunctor; IFunctorEquiv)

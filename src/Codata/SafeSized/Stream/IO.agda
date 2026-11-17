@@ -1,4 +1,4 @@
-{-# OPTIONS --erasure #-}
+{-# OPTIONS --erasure --without-K #-}
 module Codata.SafeSized.Stream.IO where
 
 open import Agda.Builtin.IO using (IO)
